@@ -1,6 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common/decorators';
 import { AuthService } from './auth.service';
-import { ForgotDTO, LoginDTO, SignupDTO } from './dto';
+import { ForgotDTO, LoginDTO, ResetDTO, SignupDTO } from './dto';
 
 @Controller('auth')
 export class AuthController {
@@ -20,8 +20,13 @@ export class AuthController {
     return this.auth.forgot(dto);
   }
 
-  // @Post('reset')
-  // reset(@Body() dto: AuthDTO) {
-  //   return this.auth.login(dto);
-  // }
+  @Post('reset')
+  reset(@Body() dto: ResetDTO) {
+    return this.auth.reset(dto);
+  }
+
+  @Post('refresh-tokens')
+  refresh(@Body() dto: { refreshToken: string }) {
+    return this.auth.refreshToken(dto);
+  }
 }

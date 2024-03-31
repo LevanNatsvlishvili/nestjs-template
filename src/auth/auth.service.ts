@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common/decorators';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { hash, verify } from 'argon2';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ForgotDTO, LoginDTO, SignupDTO } from './dto';
+import { ForgotDTO, LoginDTO, ResetDTO, SignupDTO } from './dto';
 import { MailerService } from '@nestjs-modules/mailer';
 import { generateResetCode } from './utils/resetCodeGenerator';
 import { TokenService } from './authToken.service';
@@ -55,7 +55,13 @@ export class AuthService {
     const pwMatch = await verify(user.hash, dto.password);
 
     if (!pwMatch) throw new ForbiddenException('Incorrect credentials');
-    return this.tokenService.generateToken(user.id, user.email);
+
+    return this.tokenService.generateTokens(user.id, user.email);
+  }
+
+  async refreshToken(dto: { refreshToken: string }) {
+    const { accessToken, refreshToken } = await this.tokenService.refreshTokens(dto.refreshToken);
+    return { accessToken, refreshToken };
   }
 
   async checkGeneratedResetCode(retryCount = 0) {
@@ -103,13 +109,17 @@ export class AuthService {
     const resetCode = await this.checkGeneratedResetCode();
 
     // Create a new reset code in the database
-    await this.prisma.passwordResets.create({
-      data: {
-        email: user.email,
-        code: resetCode,
-        expiresAt: new Date(Date.now() + 1000 * 60 * 15), // 15 minutes
-      },
-    });
+    try {
+      await this.prisma.passwordResets.create({
+        data: {
+          email: user.email,
+          code: resetCode,
+          expiresAt: new Date(Date.now() + 1000 * 60 * 1), // 15 minutes
+        },
+      });
+    } catch (error) {
+      throw new ForbiddenException('Code cannot be sent again for 1 minute after sending it. Please check your email.');
+    }
 
     try {
       // Send the email with the reset code
@@ -124,5 +134,32 @@ export class AuthService {
     }
 
     return { message: 'Password reset code sent. Please check your email.' };
+  }
+  async reset(dto: ResetDTO) {
+    const user = await this.prisma.passwordResets.findUnique({
+      where: {
+        email: dto.email,
+        code: dto.resetCode,
+      },
+    });
+
+    if (!user) throw new ForbiddenException('Incorrect credentials');
+
+    if (user.expiresAt < new Date()) {
+      throw new ForbiddenException('Reset code has expired');
+    }
+
+    const hashPass = await hash(dto.newPassword);
+
+    await this.prisma.users.update({
+      where: {
+        email: dto.email,
+      },
+      data: {
+        hash: hashPass,
+      },
+    });
+
+    return { message: 'Password has been reset successfully' };
   }
 }
