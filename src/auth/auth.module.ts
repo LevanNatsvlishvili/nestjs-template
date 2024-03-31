@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { authController } from './auth.controller';
-import { authService } from './auth.service';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
 import { JWTStrategy } from './strategy';
 import { TokenService } from './authToken.service';
 
@@ -21,7 +21,7 @@ import { TokenService } from './authToken.service';
       inject: [ConfigService],
     }),
   ],
-  controllers: [authController],
-  providers: [authService, TokenService, JWTStrategy],
+  controllers: [AuthController],
+  providers: [AuthService, TokenService, JWTStrategy],
 })
 export class AuthModule {}

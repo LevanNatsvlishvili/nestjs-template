@@ -9,7 +9,7 @@ import { generateResetCode } from './utils/resetCodeGenerator';
 import { TokenService } from './authToken.service';
 
 @Injectable()
-export class authService {
+export class AuthService {
   constructor(
     private prisma: PrismaService,
     private tokenService: TokenService,
